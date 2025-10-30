@@ -121,25 +121,6 @@ export const config = {
 
 ## 🔮 Fitur yang Belum Ada (To-Do)
 
-Ini adalah daftar fitur yang belum diimplementasikan dan bisa dikerjakan selanjutnya:
-
-### 1. Halaman Laporan (Reporting)
-- Belum ada halaman untuk Admin melihat total pendapatan (berdasarkan transaksi "LUNAS").
-- Belum ada filter laporan untuk harian, mingguan, atau bulanan.
-
-### 2. CRUD Konsol
-- Model `Konsol` (PS4/PS5) sudah ada di `schema.prisma` (dari ERD) tapi belum ada halaman CRUD untuk menambah/mengedit/menghapus data konsol.
-
-### 3. Penjualan Tambahan (Makanan/Minuman)
-- ERD kita tidak mencakup ini, tapi ini adalah fitur penting. Sistem belum bisa menambahkan item lain (seperti snack/minuman) ke dalam tagihan transaksi.
-
-### 4. Manajemen Paket
-- Billing saat ini murni per jam (via `tarifPerJam`). Belum ada fitur untuk memilih paket (misal: Paket 3 Jam, Paket Malam).
-
-### 5. Dropdown Pelanggan
-- Saat memulai sewa di `RuanganCard.tsx`, kita belum bisa memilih `idPelanggan` (member) untuk dicatat di transaksi.
-
-### 6. Dashboard Khusus Admin
-- Halaman utama (`/`) adalah dashboard operasional kasir. Belum ada halaman dashboard khusus untuk Admin yang menampilkan ringkasan bisnis (total pendapatan, ruangan terfavorit, dll).
+## Ubah Frontend
 
 ---

@@ -1,0 +1,130 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Model untuk operator/kasir
+// Sesuai entitas 'user'
+model User {
+  id        Int         @id @default(autoincrement()) @map("id_user")
+  nama      String
+  username  String      @unique
+  password  String      // Hashing akan kita tangani di logika API
+  role      String      // "admin" atau "kasir"
+  
+  // Relasi: 1 user bisa 'mencatat' banyak transaksi
+  transaksi Transaksi[]
+}
+
+// Model untuk member/pelanggan
+// Sesuai entitas 'pelanggan'
+model Pelanggan {
+  id            Int         @id @default(autoincrement()) @map("id_pelanggan")
+  namaPelanggan String      @map("nama_pelanggan")
+  noHp          String?     @unique @map("no_hp") // Saya buat opsional (?) dan unique
+  
+  // Relasi: 1 pelanggan bisa 'melakukan' banyak transaksi
+  transaksi Transaksi[]
+}
+
+// Model untuk unit rental (TV / Kamar)
+// Sesuai entitas 'ruangan'
+model Ruangan {
+  id                Int     @id @default(autoincrement()) @map("id_ruangan")
+  nomorRuangan      String  @unique @map("nomor_ruangan") // "PS 1", "VIP 1"
+  status            String  @default("KOSONG") // KOSONG, TERISI (Penting untuk dashboard)
+  tarifPerJam       Float   @map("tarif_per_jam")
+  tipeRuangan       String  @map("tipe_ruangan") // "REGULER", "VIP"
+  deskripsiFasilitas String @map("deskripsi_fasilitas")
+  
+  // Relasi: 1 ruangan bisa 'digunakan' di banyak transaksi (untuk history)
+  transaksi Transaksi[]
+  
+  // Relasi: 1 ruangan bisa 'berada' banyak konsol (Many-to-Many)
+  konsol Konsol[]
+}
+
+// Model untuk tipe konsol (PS4, PS5)
+// Sesuai entitas 'konsol'
+model Konsol {
+  id         Int       @id @default(autoincrement()) @map("id_konsol")
+  seriKonsol String    @map("seri_konsol") // "PS4", "PS5", "Nintendo Switch"
+  
+  // Relasi: 1 konsol bisa 'berada' di banyak ruangan (Many-to-Many)
+  ruangan Ruangan[]
+}
+
+// Model untuk billing / sesi rental
+// Sesuai entitas 'transaksi'
+model Transaksi {
+  id               Int       @id @default(autoincrement()) @map("id_transaksi")
+  waktuMulai       DateTime  @default(now()) @map("waktu_mulai")
+  waktuSelesai     DateTime? @map("waktu_selesai")
+  totalBiaya       Float?    @map("total_biaya")
+  statusPembayaran String    @default("BELUM_BAYAR") @map("status_pembayaran")
+
+  // --- Relasi (Foreign Keys) ---
+  idUser      Int
+  user        User      @relation(fields: [idUser], references: [id])
+  idPelanggan Int?
+  pelanggan   Pelanggan? @relation(fields: [idPelanggan], references: [id])
+  idRuangan   Int
+  ruangan     Ruangan   @relation(fields: [idRuangan], references: [id])
+  
+  // --- INI BARIS BARUNYA ---
+  detailPenjualan DetailPenjualan[] // Menghubungkan ke tabel penjualan produk
+  paketId Int? // Opsional, null jika billing reguler (per jam)
+  paket   Paket? @relation(fields: [paketId], references: [id])
+
+  // Index untuk mempercepat query
+  @@index([idUser])
+  @@index([idPelanggan])
+  @@index([idRuangan])
+}
+
+// Model untuk paket
+model Paket {
+  id           Int     @id @default(autoincrement())
+  namaPaket    String  @unique @map("nama_paket")
+  durasiMenit  Int     @map("durasi_menit") // Durasi paket dalam menit
+  hargaPaket   Float   @map("harga_paket")
+  
+  // Relasi: 1 Paket bisa dipakai di banyak Transaksi
+  transaksi Transaksi[]
+}
+
+// Model untuk produk (Snack, Minuman, dll)
+model Produk {
+  id     Int    @id @default(autoincrement())
+  nama   String @unique
+  harga  Float
+  stok   Int    @default(0) // Kita tambahkan manajemen stok sederhana
+  
+  // Relasi: 1 Produk bisa ada di banyak DetailPenjualan
+  detailPenjualan DetailPenjualan[]
+}
+
+// Model untuk mencatat produk apa saja yang dibeli
+// dalam 1 transaksi
+model DetailPenjualan {
+  id            Int     @id @default(autoincrement())
+  jumlah        Int
+  hargaSaatBeli Float // Menyimpan harga saat itu (jika harga produk berubah)
+
+  // Relasi ke Transaksi
+  transaksiId Int
+  transaksi   Transaksi @relation(fields: [transaksiId], references: [id])
+
+  // Relasi ke Produk
+  produkId Int
+  produk   Produk @relation(fields: [produkId], references: [id])
+
+  @@index([transaksiId])
+  @@index([produkId])
+}

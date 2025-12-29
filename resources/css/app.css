@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --color-ps-blue: #0070d1;
+    --color-bg-dark: #0f172a; /* Slate 900 */
+    --color-bg-card: #1e293b; /* Slate 800 */
+    
+    /* Animasi Custom */
+    --animate-pulse-slow: pulse-slow 3s infinite;
+    @keyframes pulse-slow {
+        0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(0,112,209,0.5); }
+        50% { opacity: 0.8; text-shadow: 0 0 20px rgba(0,112,209,0.8); }
+    }
+}
+
+/* Custom Styles */
+body {
+    background-color: var(--color-bg-dark);
+    font-family: 'Inter', sans-serif;
+}
+
+/* Sidebar Gradient */
+.sidebar-gradient {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+}
+
+/* Glassmorphism Card */
+.room-card {
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.room-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px -10px rgba(0, 112, 209, 0.3);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ps-blue); }

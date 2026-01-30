@@ -7,6 +7,7 @@ use App\Models\Ruangan;
 use App\Models\Konsol;
 use App\Models\Pelanggan;
 use App\Models\Transaksi;
+use App\Models\Paket;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
@@ -15,113 +16,213 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. BUAT USER (ADMIN & KASIR)
-        // Sesuai PDF: id_user, nama, username, password, role [cite: 89-96]
-        $admin = User::create([
+        // ==========================================
+        // 1. BUAT AKUN ADMIN & KASIR
+        // ==========================================
+        User::create([
             'nama' => 'Sendi Dwi Putra',
             'username' => 'admin',
-            'password' => Hash::make('password'), // Password default: password
+            'password' => Hash::make('password'),
             'role' => 'admin'
         ]);
 
-        $kasir = User::create([
+        User::create([
             'nama' => 'Dandy Muhammad Fadillah',
             'username' => 'kasir',
             'password' => Hash::make('password'),
             'role' => 'kasir'
         ]);
-
-        // 2. BUAT DATA RUANGAN (REGULER & VIP)
-        // Sesuai PDF: tipe_ruangan Reguler/VIP, tarif_per_jam [cite: 51, 107-111]
         
-        // --- Ruangan VIP ---
-        $vip1 = Ruangan::create([
-            'nomor_ruangan' => 'VIP-01',
-            'tarif_per_jam' => 25000,
-            'tipe_ruangan' => 'VIP',
-            'deskripsi_fasilitas' => 'TV 50 Inch 4K, Sofa Premium Empuk, AC Dingin, Bonus Minuman'
-        ]);
+        $users = User::all();
 
-        $vip2 = Ruangan::create([
-            'nomor_ruangan' => 'VIP-02',
-            'tarif_per_jam' => 25000,
-            'tipe_ruangan' => 'VIP',
-            'deskripsi_fasilitas' => 'TV 50 Inch 4K, Bean Bag Besar, AC Dingin, Sound Bar'
-        ]);
+        // ==========================================
+        // 2. DATA RUANGAN & KONSOL
+        // ==========================================
+        $dataRuangan = [
+            // VIP (Mahal - 30rb/40rb)
+            ['VIP-01', 30000, 'VIP', 'PS5 Pro, TV 55" 4K, Sofa Recliner, AC, Soundbar'],
+            ['VIP-02', 30000, 'VIP', 'PS5 Pro, TV 55" 4K, Sofa L-Shape, AC'],
+            ['VIP-03', 35000, 'VIP', 'PS5 Pro, TV 65" 4K, Gaming Chair, AC, Private'],
+            ['VIP-04', 30000, 'VIP', 'PS5 Standard, TV 50" 4K, Bean Bag Jumbo, AC'],
+            ['VIP-05', 40000, 'VIP', 'PS5 Pro, TV 70" 4K, Sultan Sofa, AC, Netflix'],
+            
+            // Reguler (Murah - 10rb/15rb)
+            ['REG-01', 15000, 'Reguler', 'PS4 Pro, TV 43" FHD, Karpet, Kipas Angin'],
+            ['REG-02', 15000, 'Reguler', 'PS4 Pro, TV 43" FHD, Karpet, Kipas Angin'],
+            ['REG-03', 15000, 'Reguler', 'PS4 Slim, TV 40" FHD, Lesehan, Kipas Angin'],
+            ['REG-04', 15000, 'Reguler', 'PS4 Slim, TV 40" FHD, Lesehan, Kipas Angin'],
+            ['REG-05', 12000, 'Reguler', 'PS4 Fat, TV 32" HD, Karpet, Kipas Angin'],
+            ['REG-06', 12000, 'Reguler', 'PS4 Fat, TV 32" HD, Karpet, Kipas Angin'],
+            ['REG-07', 10000, 'Reguler', 'PS3 Slim, TV 32" HD, Karpet, Kipas Angin'],
+            ['REG-08', 10000, 'Reguler', 'PS3 Slim, TV 32" HD, Karpet, Kipas Angin'],
+        ];
 
-        // --- Ruangan Reguler ---
-        $reg1 = Ruangan::create([
-            'nomor_ruangan' => 'REG-01',
-            'tarif_per_jam' => 15000,
-            'tipe_ruangan' => 'Reguler',
-            'deskripsi_fasilitas' => 'TV 32 Inch, Karpet Nyaman, Kipas Angin'
-        ]);
+        foreach ($dataRuangan as $idx => $r) {
+            $ruangan = Ruangan::create([
+                'nomor_ruangan' => $r[0],
+                'tarif_per_jam' => $r[1],
+                'tipe_ruangan' => $r[2],
+                'deskripsi_fasilitas' => $r[3],
+            ]);
 
-        $reg2 = Ruangan::create([
-            'nomor_ruangan' => 'REG-02',
-            'tarif_per_jam' => 15000,
-            'tipe_ruangan' => 'Reguler',
-            'deskripsi_fasilitas' => 'TV 32 Inch, Karpet Nyaman, Kipas Angin'
-        ]);
+            // Auto create console berdasarkan tipe ruangan
+            $jenisKonsol = ($r[2] == 'VIP') ? 'PS5' : (($r[1] >= 15000) ? 'PS4-PRO' : 'PS4-SLIM');
+            Konsol::create([
+                'id_ruangan' => $ruangan->id_ruangan,
+                'seri_konsol' => $jenisKonsol . '-SERIES-' . str_pad($idx + 1, 3, '0', STR_PAD_LEFT),
+            ]);
+        }
 
-        // 3. BUAT DATA KONSOL
-        // Sesuai PDF: Relasi 1-to-1 dengan ruangan [cite: 54, 117-120, 137]
-        Konsol::create([
-            'id_ruangan' => $vip1->id_ruangan,
-            'seri_konsol' => 'PS5-PRO-001'
-        ]);
+        $ruanganVIP = Ruangan::where('tipe_ruangan', 'VIP')->get();
+        $ruanganReguler = Ruangan::where('tipe_ruangan', 'Reguler')->get();
 
-        Konsol::create([
-            'id_ruangan' => $vip2->id_ruangan,
-            'seri_konsol' => 'PS5-DIGITAL-002'
-        ]);
+        // ==========================================
+        // 3. DATA PAKET (PERBEDAAN HARGA JELAS)
+        // ==========================================
+        // Paket VIP (Harga lebih mahal)
+        $paketVIP = [
+            Paket::create(['nama_paket' => 'Paket VIP 2 Jam', 'durasi_menit' => 120, 'harga' => 55000]), // Hemat 5rb
+            Paket::create(['nama_paket' => 'Paket VIP 3 Jam', 'durasi_menit' => 180, 'harga' => 80000]), // Hemat 10rb
+            Paket::create(['nama_paket' => 'Paket VIP 5 Jam', 'durasi_menit' => 300, 'harga' => 130000]), // Hemat 20rb
+        ];
 
-        Konsol::create([
-            'id_ruangan' => $reg1->id_ruangan,
-            'seri_konsol' => 'PS4-SLIM-001'
-        ]);
+        // Paket Reguler (Harga rakyat)
+        $paketReguler = [
+            Paket::create(['nama_paket' => 'Paket Reguler 3 Jam', 'durasi_menit' => 180, 'harga' => 40000]), // Hemat 5rb
+            Paket::create(['nama_paket' => 'Paket Reguler 5 Jam', 'durasi_menit' => 300, 'harga' => 65000]), // Hemat 10rb
+            Paket::create(['nama_paket' => 'Paket Bergadang (7 Jam)', 'durasi_menit' => 420, 'harga' => 85000]),
+        ];
 
-        Konsol::create([
-            'id_ruangan' => $reg2->id_ruangan,
-            'seri_konsol' => 'PS4-FAT-002'
-        ]);
+        // ==========================================
+        // 4. DATA PELANGGAN (50 ORANG)
+        // ==========================================
+        $namaPelanggan = [
+            'Asep Surasep', 'Budi Santoso', 'Cecep Gorbachev', 'Dedi Mizwar', 'Eko Patrio',
+            'Fajar Sadboy', 'Galih Ginanjar', 'Hendra Setiawan', 'Indra Bekti', 'Joko Anwar',
+            'Kevin Sanjaya', 'Lesti Kejora', 'Maulana Malik', 'Naufal Samudra', 'Opick Tomboati',
+            'Putri Delina', 'Qorygore', 'Rizky Billar', 'Sule Prikitiw', 'Taufik Hidayat',
+            'Udin Sedunia', 'Vicky Prasetyo', 'Wendy Cagur', 'Xabiru', 'Yoga Arizona',
+            'Zayn Malik KW', 'Aldi Taher', 'Baim Wong', 'Cinta Laura', 'Desta Mahendra',
+            'Erik Tohir', 'Fadil Jaidi', 'Gading Marten', 'Habib Jafar', 'Irfan Hakim',
+            'Jerome Polin', 'Kaesang Pangarep', 'Luna Maya', 'Marshel Widianto', 'Nagita Slavina',
+            'Olga Syahputra', 'Prilly Latuconsina', 'Raditya Dika', 'Raffi Ahmad', 'Sandra Dewi',
+            'Teria Yulis', 'Uus', 'Vincent Rompies', 'Wika Salim', 'Youtuber Gaming'
+        ];
 
-        // 4. BUAT DATA PELANGGAN
-        // Sesuai PDF: nama_pelanggan, no_hp [cite: 100-101]
-        $p1 = Pelanggan::create([
-            'nama_pelanggan' => 'Naufal Putra',
-            'no_hp' => '081234567890'
-        ]);
+        foreach ($namaPelanggan as $nama) {
+            Pelanggan::create([
+                'nama_pelanggan' => $nama,
+                'no_hp' => '08' . rand(11, 99) . rand(10000000, 99999999),
+            ]);
+        }
+        $pelanggans = Pelanggan::all();
 
-        $p2 = Pelanggan::create([
-            'nama_pelanggan' => 'Budi Santoso',
-            'no_hp' => '089876543210'
-        ]);
-
-        // 5. BUAT CONTOH TRANSAKSI
-        // Sesuai PDF: Transaksi menghubungkan user, ruangan, dan pelanggan [cite: 121-132]
+        // ==========================================
+        // 5. GENERATE HISTORI TRANSAKSI (30 HARI TERAKHIR)
+        // ==========================================
+        // Kita akan buat grafik pendapatan naik turun agar terlihat real
         
-        // Transaksi 1: Sudah Selesai & Lunas
-        Transaksi::create([
-            'id_user' => $admin->id_user,
-            'id_ruangan' => $vip1->id_ruangan,
-            'id_pelanggan' => $p1->id_pelanggan,
-            'waktu_mulai' => Carbon::now()->subHours(3),
-            'waktu_selesai' => Carbon::now()->subHours(1),
-            'total_biaya' => 50000, // 2 Jam x 25.000
-            'status_pembayaran' => 'Lunas'
-        ]);
+        $now = Carbon::now();
+        
+        // Loop mundur 30 hari ke belakang
+        for ($i = 30; $i >= 1; $i--) {
+            $tanggal = $now->copy()->subDays($i);
+            
+            // Random jumlah transaksi per hari (Weekend lebih ramai)
+            $isWeekend = $tanggal->isWeekend();
+            $jumlahTransaksi = $isWeekend ? rand(15, 25) : rand(5, 12);
 
-        // Transaksi 2: Sedang Main (Aktif)
-        // Waktu selesai NULL berarti masih main [cite: 130]
-        Transaksi::create([
-            'id_user' => $kasir->id_user,
-            'id_ruangan' => $reg1->id_ruangan,
-            'id_pelanggan' => $p2->id_pelanggan,
-            'waktu_mulai' => Carbon::now()->subMinutes(30),
-            'waktu_selesai' => null, // Masih main
-            'total_biaya' => 0,      // Belum dihitung
-            'status_pembayaran' => 'Belum Lunas'
-        ]);
+            for ($j = 0; $j < $jumlahTransaksi; $j++) {
+                
+                // 1. Tentukan Ruangan (VIP / Reguler)
+                $isVIP = rand(0, 100) < 40; // 40% kemungkinan VIP
+                $ruangan = $isVIP ? $ruanganVIP->random() : $ruanganReguler->random();
+
+                // 2. Tentukan Jenis Billing (Paket / Open)
+                $pakePaket = rand(0, 100) < 60; // 60% orang suka paket
+                
+                $jamMulai = rand(9, 22); // Buka jam 9 pagi - 10 malam
+                $waktuMulai = $tanggal->copy()->setHour($jamMulai)->setMinute(rand(0, 59));
+                
+                $idPaket = null;
+                $totalBiaya = 0;
+                $durasiMenit = 0;
+
+                if ($pakePaket) {
+                    // Ambil paket yang SESUAI tipe ruangan
+                    $paketDipilih = $isVIP ? collect($paketVIP)->random() : collect($paketReguler)->random();
+                    
+                    $idPaket = $paketDipilih->id_paket;
+                    $totalBiaya = $paketDipilih->harga;
+                    $durasiMenit = $paketDipilih->durasi_menit;
+                } else {
+                    // Open Billing (Main 1-4 Jam)
+                    $durasiJam = rand(1, 4);
+                    $durasiMenit = $durasiJam * 60;
+                    $totalBiaya = $durasiJam * $ruangan->tarif_per_jam;
+                }
+
+                $waktuSelesai = $waktuMulai->copy()->addMinutes($durasiMenit);
+
+                // Simpan History Lunas
+                Transaksi::create([
+                    'id_user' => $users->random()->id_user,
+                    'id_pelanggan' => $pelanggans->random()->id_pelanggan,
+                    'id_ruangan' => $ruangan->id_ruangan,
+                    'id_paket' => $idPaket,
+                    'waktu_mulai' => $waktuMulai,
+                    'waktu_selesai' => $waktuSelesai,
+                    'total_biaya' => $totalBiaya,
+                    'status_pembayaran' => 'Lunas',
+                    'created_at' => $waktuMulai, // Penting untuk grafik!
+                    'updated_at' => $waktuSelesai,
+                ]);
+            }
+        }
+
+        // ==========================================
+        // 6. GENERATE TRANSAKSI AKTIF (SEKARANG)
+        // ==========================================
+        // Buat 6 ruangan sedang terpakai saat ini
+        
+        $ruanganAktif = Ruangan::inRandomOrder()->take(6)->get();
+
+        foreach ($ruanganAktif as $ruangan) {
+            $isVIP = $ruangan->tipe_ruangan == 'VIP';
+            $pakePaket = rand(0, 1); // 50:50
+
+            // Mereka mulai main antara 10 menit s/d 2 jam yang lalu
+            $waktuMulai = Carbon::now()->subMinutes(rand(10, 120));
+            
+            $idPaket = null;
+            $waktuSelesai = null;
+            $totalBiaya = 0;
+
+            if ($pakePaket) {
+                // Sedang main paket
+                $paketDipilih = $isVIP ? collect($paketVIP)->random() : collect($paketReguler)->random();
+                
+                $idPaket = $paketDipilih->id_paket;
+                $totalBiaya = $paketDipilih->harga;
+                // Waktu selesai sudah ditentukan di masa depan
+                $waktuSelesai = $waktuMulai->copy()->addMinutes($paketDipilih->durasi_menit);
+            } else {
+                // Sedang main Open Billing
+                // Waktu selesai NULL (belum stop)
+                $waktuSelesai = null;
+                $totalBiaya = 0; // Belum dihitung
+            }
+
+            Transaksi::create([
+                'id_user' => $users->random()->id_user,
+                'id_pelanggan' => $pelanggans->random()->id_pelanggan,
+                'id_ruangan' => $ruangan->id_ruangan,
+                'id_paket' => $idPaket,
+                'waktu_mulai' => $waktuMulai,
+                'waktu_selesai' => $waktuSelesai,
+                'total_biaya' => $totalBiaya,
+                'status_pembayaran' => 'Belum Lunas', // Masih main
+            ]);
+        }
     }
 }

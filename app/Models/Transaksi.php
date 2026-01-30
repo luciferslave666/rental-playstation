@@ -39,4 +39,8 @@ class Transaksi extends Model
     {
         return $this->belongsTo(Pelanggan::class, 'id_pelanggan');
     }
+        public function paket()
+    {
+        return $this->belongsTo(Paket::class, 'id_paket');
+    }
 }

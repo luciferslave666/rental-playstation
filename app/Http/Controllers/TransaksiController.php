@@ -6,111 +6,182 @@ use Illuminate\Http\Request;
 use App\Models\Ruangan;
 use App\Models\Pelanggan;
 use App\Models\Transaksi;
-use Illuminate\Support\Facades\Auth; // Untuk ambil ID user yang login
+use App\Models\Paket;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class TransaksiController extends Controller
 {
-    // Menampilkan Form Tambah Transaksi
+    // 1. Tampilkan Riwayat Transaksi
+    public function index()
+    {
+        $semuaTransaksi = Transaksi::with(['user', 'pelanggan', 'ruangan'])
+            ->latest()
+            ->paginate(10);
+
+        return view('transaksi.index', compact('semuaTransaksi'));
+    }
+
+    // 2. Tampilkan Form Transaksi Baru
     public function create()
     {
-        // 1. Ambil Data Pelanggan untuk Dropdown
+        // Ambil data pelanggan
         $pelanggans = Pelanggan::all();
 
-        // 2. Ambil Hanya Ruangan yang KOSONG (Available)
-        // Logika: Cari ruangan yang TIDAK punya transaksi aktif (waktu_selesai masih NULL)
+        // Ambil data paket
+        $pakets = Paket::all(); 
+
+        // Ambil hanya ruangan yang KOSONG
         $ruangans = Ruangan::whereDoesntHave('transaksi', function ($query) {
             $query->whereNull('waktu_selesai');
         })->get();
 
-        return view('transaksi.create', compact('pelanggans', 'ruangans'));
+        return view('transaksi.create', compact('pelanggans', 'ruangans', 'pakets'));
     }
 
-    // Menyimpan Data Transaksi Baru (Mulai Main)
+    // 3. Simpan Transaksi (Logika Utama)
     public function store(Request $request)
     {
-        // Validasi input
+        // A. Validasi Input
         $request->validate([
-            'id_pelanggan' => 'required|exists:pelanggan,id_pelanggan',
             'id_ruangan' => 'required|exists:ruangan,id_ruangan',
+            
+            // Validasi Kondisional: Pelanggan
+            'tipe_pelanggan' => 'required|in:lama,baru',
+            'id_pelanggan' => 'required_if:tipe_pelanggan,lama',
+            'new_nama' => 'required_if:tipe_pelanggan,baru',
+            'new_no_hp' => 'required_if:tipe_pelanggan,baru',
+
+            // Validasi Billing (Opsional semua karena defaultnya Open Billing)
+            'durasi_custom' => 'nullable|numeric|min:1',
+            'id_paket' => 'nullable|exists:paket,id_paket',
         ]);
 
-        // Simpan ke Database
+        // B. Tentukan ID Pelanggan (Lama atau Baru?)
+        $finalIdPelanggan = null;
+
+        if ($request->tipe_pelanggan == 'baru') {
+            // Buat Pelanggan Baru
+            $pelangganBaru = Pelanggan::create([
+                'nama_pelanggan' => $request->new_nama,
+                'no_hp' => $request->new_no_hp
+            ]);
+            $finalIdPelanggan = $pelangganBaru->id_pelanggan;
+        } else {
+            // Pakai Pelanggan Lama
+            $finalIdPelanggan = $request->id_pelanggan;
+        }
+
+        // C. Tentukan Logika Waktu & Biaya (Custom vs Paket vs Open)
+        $ruangan = Ruangan::findOrFail($request->id_ruangan);
+        $waktuMulai = Carbon::now();
+        $waktuSelesai = null;
+        $totalBiaya = 0;
+        $idPaket = null;
+
+        if ($request->filled('durasi_custom')) {
+            // KASUS 1: CUSTOM DURATION
+            $durasiJam = $request->durasi_custom;
+            $waktuSelesai = $waktuMulai->copy()->addHours($durasiJam);
+            $totalBiaya = $durasiJam * $ruangan->tarif_per_jam;
+        
+        } elseif ($request->filled('id_paket')) {
+            // KASUS 2: PAKET HEMAT
+            $paket = Paket::findOrFail($request->id_paket);
+            $waktuSelesai = $waktuMulai->copy()->addMinutes($paket->durasi_menit);
+            $totalBiaya = $paket->harga;
+            $idPaket = $paket->id_paket;
+
+        } else {
+            // KASUS 3: OPEN BILLING (Default)
+            // Waktu selesai & biaya dihitung nanti saat checkout
+        }
+
+        // D. Simpan ke Database
         Transaksi::create([
-            'id_user' => Auth::id(), // Mengambil ID User yang sedang login (Fallback ke 1 jika null sementara)
-            'id_pelanggan' => $request->id_pelanggan,
+            'id_user' => Auth::id(), // ID Operator yang login
+            'id_pelanggan' => $finalIdPelanggan,
             'id_ruangan' => $request->id_ruangan,
-            'waktu_mulai' => Carbon::now(), // Waktu saat tombol ditekan
-            'waktu_selesai' => null, // Masih main
-            'total_biaya' => 0,
+            'id_paket' => $idPaket,
+            'waktu_mulai' => $waktuMulai,
+            'waktu_selesai' => $waktuSelesai,
+            'total_biaya' => $totalBiaya,
             'status_pembayaran' => 'Belum Lunas'
         ]);
 
-        // Redirect kembali ke Dashboard dengan pesan sukses
         return redirect()->route('dashboard')->with('success', 'Sesi sewa berhasil dimulai!');
     }
-    // Menampilkan Detail Transaksi (Checkout Page)
-public function show($id_transaksi)
-{
-    // Ambil transaksi beserta relasinya
-    $transaksi = Transaksi::with(['pelanggan', 'ruangan', 'user'])->findOrFail($id_transaksi);
 
-    // Hitung Durasi & Biaya Real-time (Untuk Preview)
-    $waktuMulai = Carbon::parse($transaksi->waktu_mulai);
-    $waktuSekarang = Carbon::now();
-    
-    // Hitung selisih durasi
-    $durasiJam = $waktuMulai->diffInHours($waktuSekarang);
-    $durasiMenit = $waktuMulai->diffInMinutes($waktuSekarang) % 60;
-    
-    // Hitung Total Biaya (Pembulatan ke atas per jam atau hitung per menit)
-    // Logika Sederhana: Hitung per jam (jika main 1 jam 10 menit dihitung 2 jam)
-    $totalJamBayar = ceil($waktuMulai->diffInMinutes($waktuSekarang) / 60);
-    // Jika baru mulai (< 1 jam), minimal bayar 1 jam
-    $totalJamBayar = $totalJamBayar < 1 ? 1 : $totalJamBayar;
-    
-    $estimasiBiaya = $totalJamBayar * $transaksi->ruangan->tarif_per_jam;
+    // 4. Halaman Detail / Checkout
+    public function show($id_transaksi)
+    {
+        $transaksi = Transaksi::with(['pelanggan', 'ruangan', 'user', 'paket'])->findOrFail($id_transaksi);
 
-    return view('transaksi.show', compact('transaksi', 'durasiJam', 'durasiMenit', 'estimasiBiaya', 'totalJamBayar'));
-}
+        $waktuMulai = Carbon::parse($transaksi->waktu_mulai);
+        $waktuSekarang = Carbon::now();
+        
+        $durasiJam = $waktuMulai->diffInHours($waktuSekarang);
+        $durasiMenit = $waktuMulai->diffInMinutes($waktuSekarang) % 60;
+        
+        // Logika Tampilan Estimasi Biaya
+        if($transaksi->total_biaya > 0) {
+            // Jika biaya sudah diset di awal (Paket / Custom), tampilkan itu
+            $estimasiBiaya = $transaksi->total_biaya;
+            
+            // Hitung durasi berdasarkan target selesai
+            if($transaksi->waktu_selesai) {
+                $selesai = Carbon::parse($transaksi->waktu_selesai);
+                $totalJamBayar = ceil($waktuMulai->diffInMinutes($selesai) / 60);
+            } else {
+                $totalJamBayar = ceil($waktuMulai->diffInMinutes($waktuSekarang) / 60);
+            }
+        } else {
+            // Jika Open Billing (Biaya 0), hitung real-time
+            $totalJamBayar = ceil($waktuMulai->diffInMinutes($waktuSekarang) / 60);
+            $totalJamBayar = $totalJamBayar < 1 ? 1 : $totalJamBayar;
+            $estimasiBiaya = $totalJamBayar * $transaksi->ruangan->tarif_per_jam;
+        }
 
-// Proses Selesai Main (Checkout)
+        return view('transaksi.show', compact('transaksi', 'durasiJam', 'durasiMenit', 'estimasiBiaya', 'totalJamBayar'));
+    }
+
+    // 5. Proses Checkout (Stop & Bayar)
     public function complete($id_transaksi)
     {
         $transaksi = Transaksi::findOrFail($id_transaksi);
 
-        // Validasi: Jangan checkout kalau sudah lunas
         if($transaksi->status_pembayaran == 'Lunas') {
             return redirect()->route('dashboard')->with('error', 'Transaksi ini sudah selesai!');
         }
 
-        // 1. Set Waktu Selesai
-        $waktuSelesai = Carbon::now();
-        
-        // 2. Hitung Final Biaya
-        $waktuMulai = Carbon::parse($transaksi->waktu_mulai);
-        $totalJamBayar = ceil($waktuMulai->diffInMinutes($waktuSelesai) / 60);
-        $totalJamBayar = $totalJamBayar < 1 ? 1 : $totalJamBayar;
-        
-        $totalBiaya = $totalJamBayar * $transaksi->ruangan->tarif_per_jam;
+        // Jika Open Billing (total_biaya masih 0), hitung & kunci harga sekarang
+        if($transaksi->total_biaya == 0) {
+            $waktuSelesai = Carbon::now();
+            $waktuMulai = Carbon::parse($transaksi->waktu_mulai);
+            
+            $totalJamBayar = ceil($waktuMulai->diffInMinutes($waktuSelesai) / 60);
+            $totalJamBayar = $totalJamBayar < 1 ? 1 : $totalJamBayar;
+            
+            $totalBiaya = $totalJamBayar * $transaksi->ruangan->tarif_per_jam;
 
-        // 3. Update Database
-        $transaksi->update([
-            'waktu_selesai' => $waktuSelesai,
-            'total_biaya' => $totalBiaya,
-            'status_pembayaran' => 'Lunas' // Sesuai PDF hal 7 [cite: 132]
-        ]);
+            $transaksi->update([
+                'waktu_selesai' => $waktuSelesai,
+                'total_biaya' => $totalBiaya,
+                'status_pembayaran' => 'Lunas'
+            ]);
+        } else {
+            // Jika Paket/Custom (Harga sudah ada), cukup update status
+            // Opsional: Update waktu selesai aktual jika mau
+            $transaksi->update([
+                'status_pembayaran' => 'Lunas'
+            ]);
+        }
 
-        return redirect()->route('dashboard')->with('success', "Checkout Berhasil! Total Tagihan: Rp " . number_format($totalBiaya));
+        return redirect()->route('dashboard')->with('success', "Checkout Berhasil! Total Tagihan: Rp " . number_format($transaksi->total_biaya));
     }
-    // Menampilkan Riwayat Semua Transaksi
-    public function index()
+    public function print($id_transaksi)
     {
-        // Ambil semua transaksi, urutkan dari yang terbaru
-        $semuaTransaksi = Transaksi::with(['user', 'pelanggan', 'ruangan'])
-            ->latest() // Urutkan created_at DESC
-            ->paginate(10); // Batasi 10 per halaman
-
-        return view('   transaksi.index', compact('semuaTransaksi'));
+        $transaksi = Transaksi::with(['pelanggan', 'ruangan', 'paket', 'user'])->findOrFail($id_transaksi);
+        return view('transaksi.print', compact('transaksi'));
     }
 }

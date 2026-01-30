@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\RuanganController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\PaketController;
 
 // --- ROUTE PUBLIC (Bisa diakses tanpa login)
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -33,4 +34,7 @@ Route::middleware(['auth'])->group(function () {
 
     // User Route
     Route::resource('user', UserController::class);
+
+    // Paket Route
+    Route::resource('paket', PaketController::class);
 });

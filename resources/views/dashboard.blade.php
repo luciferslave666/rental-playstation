@@ -63,7 +63,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Grafik Pendapatan
         const ctxIncome = document.getElementById('incomeChart').getContext('2d');
         const gradient = ctxIncome.createLinearGradient(0, 0, 0, 400);
         gradient.addColorStop(0, 'rgba(0, 112, 209, 0.5)');
@@ -97,7 +96,6 @@
             }
         });
 
-        // Grafik Popularitas
         const ctxRoom = document.getElementById('roomChart').getContext('2d');
         new Chart(ctxRoom, {
             type: 'doughnut',
@@ -131,6 +129,7 @@
         @foreach($ruangans as $ruangan)
             @if($ruangan->status == 'Terisi')
                 <div class="room-card bg-slate-800 rounded-2xl p-5 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] relative overflow-hidden">
+                    
                     <div class="absolute top-0 right-0 {{ $ruangan->tipe_ruangan == 'VIP' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-slate-700 text-slate-400' }} text-xs font-bold px-3 py-1 rounded-bl-xl border-l border-b">
                         {{ $ruangan->tipe_ruangan }}
                     </div>
@@ -146,18 +145,30 @@
                     </div>
                     
                     <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-700/50 mb-3">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs text-slate-400">Mulai: {{ $ruangan->transaksi_aktif->waktu_mulai->format('H:i') }}</span>
-                            <span class="text-red-400 text-xs font-bold animate-pulse">Main</span>
-                        </div>
-                        <div class="text-xl font-mono font-bold text-white text-center">
-                            {{ $ruangan->transaksi_aktif->waktu_mulai->diffForHumans(null, true) }}
-                        </div>
+                        @if($ruangan->transaksi_aktif->id_paket)
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-emerald-400 font-bold">PAKET AKTIF</span>
+                                <span class="text-xs text-slate-400">Selesai: {{ $ruangan->transaksi_aktif->waktu_selesai->format('H:i') }}</span>
+                            </div>
+                            <div class="text-sm text-white text-center font-bold">
+                                Sisa: {{ $ruangan->transaksi_aktif->waktu_selesai->diffForHumans(null, true) }}
+                            </div>
+                        @else
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs text-slate-400">Mulai: {{ $ruangan->transaksi_aktif->waktu_mulai->format('H:i') }}</span>
+                                <span class="text-red-400 text-xs font-bold animate-pulse">Main</span>
+                            </div>
+                            <div class="text-xl font-mono font-bold text-white text-center">
+                                {{ $ruangan->transaksi_aktif->waktu_mulai->diffForHumans(null, true) }}
+                            </div>
+                        @endif
                     </div>
+
                     <a href="{{ route('transaksi.show', $ruangan->transaksi_aktif->id_transaksi) }}" class="block w-full text-center py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium transition">
                         Detail Transaksi
                     </a>
                 </div>
+
             @else
                 <div class="room-card bg-slate-800 rounded-2xl p-5 border border-slate-700 hover:border-emerald-500/50 transition-all cursor-pointer group relative">
                     <div class="absolute top-0 right-0 {{ $ruangan->tipe_ruangan == 'VIP' ? 'bg-yellow-500/10 text-yellow-500/50' : 'bg-slate-700 text-slate-500' }} text-xs font-bold px-3 py-1 rounded-bl-xl">

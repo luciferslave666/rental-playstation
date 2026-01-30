@@ -48,6 +48,10 @@
     <i class="fa-solid fa-user-shield"></i>
     <span>Data Pegawai</span>
 </a>
+<a href="{{ route('paket.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('paket*') ? 'bg-slate-700 text-white' : '' }}">
+    <i class="fa-solid fa-box-archive w-5 text-center"></i>
+    <span>Kelola Paket</span>
+</a>
             </nav>
 
 <div class="p-4 border-t border-slate-700/50">

@@ -16,10 +16,24 @@ class Ruangan extends Model
         'deskripsi_fasilitas'
     ];
 
-    // Relasi: Satu ruangan punya satu konsol
+    // Relasi Konsol
     public function konsol()
     {
         return $this->hasOne(Konsol::class, 'id_ruangan');
     }
-    public function transaksi() { return $this->hasMany(Transaksi::class, 'id_ruangan'); }
+
+    // Relasi History Semua Transaksi
+    public function transaksi() 
+    { 
+        return $this->hasMany(Transaksi::class, 'id_ruangan'); 
+    }
+
+    // --- TAMBAHAN PENTING (Agar Dashboard Merah) ---
+    public function transaksiAktif()
+    {
+        // Ambil transaksi yang statusnya BELUM LUNAS
+        return $this->hasOne(Transaksi::class, 'id_ruangan')
+                    ->where('status_pembayaran', 'Belum Lunas')
+                    ->latest();
+    }
 }

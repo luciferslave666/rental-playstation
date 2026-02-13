@@ -22,8 +22,8 @@ class TransaksiController extends Controller
         return view('transaksi.index', compact('semuaTransaksi'));
     }
 
-    // 2. Tampilkan Form Transaksi Baru
-    public function create()
+    // 2. Tampilkan Form Transaksi Baru (DIPERBAIKI)
+    public function create(Request $request)
     {
         // Ambil data pelanggan
         $pelanggans = Pelanggan::all();
@@ -31,12 +31,22 @@ class TransaksiController extends Controller
         // Ambil data paket
         $pakets = Paket::all(); 
 
-        // Ambil hanya ruangan yang KOSONG
+        // LOGIKA FILTER: Ambil ruangan yang TIDAK SEDANG DIPAKAI (Tidak punya transaksi 'Belum Lunas')
         $ruangans = Ruangan::whereDoesntHave('transaksi', function ($query) {
-            $query->whereNull('waktu_selesai');
-        })->get();
+            $query->where('status_pembayaran', 'Belum Lunas');
+        })->orderBy('nomor_ruangan', 'asc')->get();
 
-        return view('transaksi.create', compact('pelanggans', 'ruangans', 'pakets'));
+        // LOGIKA AUTO-SELECT: Cek apakah ada request dari dashboard (tombol + BARU)
+        $selectedRoom = null;
+        if ($request->has('room_id')) {
+            // Validasi: Pastikan ruangan yang diklik benar-benar ada di daftar ruangan kosong
+            $cekRuangan = $ruangans->where('id_ruangan', $request->room_id)->first();
+            if($cekRuangan) {
+                $selectedRoom = $request->room_id;
+            }
+        }
+
+        return view('transaksi.create', compact('pelanggans', 'ruangans', 'pakets', 'selectedRoom'));
     }
 
     // 3. Simpan Transaksi (Logika Utama)
@@ -52,10 +62,19 @@ class TransaksiController extends Controller
             'new_nama' => 'required_if:tipe_pelanggan,baru',
             'new_no_hp' => 'required_if:tipe_pelanggan,baru',
 
-            // Validasi Billing (Opsional semua karena defaultnya Open Billing)
+            // Validasi Billing
             'durasi_custom' => 'nullable|numeric|min:1',
             'id_paket' => 'nullable|exists:paket,id_paket',
         ]);
+
+        // CEK ULANG: Pastikan ruangan belum diambil orang lain di detik yang sama
+        $isTerpakai = Transaksi::where('id_ruangan', $request->id_ruangan)
+                            ->where('status_pembayaran', 'Belum Lunas')
+                            ->exists();
+
+        if ($isTerpakai) {
+            return back()->withErrors(['id_ruangan' => 'Ruangan ini sedang digunakan! Pilih ruangan lain.'])->withInput();
+        }
 
         // B. Tentukan ID Pelanggan (Lama atau Baru?)
         $finalIdPelanggan = null;
@@ -81,14 +100,14 @@ class TransaksiController extends Controller
 
         if ($request->filled('durasi_custom')) {
             // KASUS 1: CUSTOM DURATION
-            $durasiJam = $request->durasi_custom;
+            $durasiJam = (int)$request->durasi_custom;
             $waktuSelesai = $waktuMulai->copy()->addHours($durasiJam);
             $totalBiaya = $durasiJam * $ruangan->tarif_per_jam;
         
         } elseif ($request->filled('id_paket')) {
             // KASUS 2: PAKET HEMAT
             $paket = Paket::findOrFail($request->id_paket);
-            $waktuSelesai = $waktuMulai->copy()->addMinutes($paket->durasi_menit);
+            $waktuSelesai = $waktuMulai->copy()->addMinutes((int) $paket->durasi_menit);
             $totalBiaya = $paket->harga;
             $idPaket = $paket->id_paket;
 
@@ -138,7 +157,7 @@ class TransaksiController extends Controller
         } else {
             // Jika Open Billing (Biaya 0), hitung real-time
             $totalJamBayar = ceil($waktuMulai->diffInMinutes($waktuSekarang) / 60);
-            $totalJamBayar = $totalJamBayar < 1 ? 1 : $totalJamBayar;
+            $totalJamBayar = $totalJamBayar < 1 ? 1 : $totalJamBayar; // Minimal bayar 1 jam
             $estimasiBiaya = $totalJamBayar * $transaksi->ruangan->tarif_per_jam;
         }
 
@@ -171,7 +190,6 @@ class TransaksiController extends Controller
             ]);
         } else {
             // Jika Paket/Custom (Harga sudah ada), cukup update status
-            // Opsional: Update waktu selesai aktual jika mau
             $transaksi->update([
                 'status_pembayaran' => 'Lunas'
             ]);
@@ -179,6 +197,8 @@ class TransaksiController extends Controller
 
         return redirect()->route('dashboard')->with('success', "Checkout Berhasil! Total Tagihan: Rp " . number_format($transaksi->total_biaya));
     }
+    
+    // 6. Cetak Struk
     public function print($id_transaksi)
     {
         $transaksi = Transaksi::with(['pelanggan', 'ruangan', 'paket', 'user'])->findOrFail($id_transaksi);

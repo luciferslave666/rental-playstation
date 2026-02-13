@@ -128,12 +128,12 @@
                 </p>
 
                 @if($transaksi->status_pembayaran == 'Belum Lunas')
-                    <form action="{{ route('transaksi.complete', $transaksi->id_transaksi) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghentikan sesi dan memproses pembayaran?');">
-                        @csrf
-                        <button type="submit" class="w-full py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-600/30 transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-stop-circle text-xl"></i> STOP & BAYAR
-                        </button>
-                    </form>
+<form action="{{ route('transaksi.complete', $transaksi->id_transaksi) }}" method="POST" onsubmit="return confirm('Stop timer dan selesaikan pembayaran?');">
+    @csrf
+    @method('PUT')  <button type="submit" class="w-full md:w-auto px-8 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2">
+        <i class="fa-solid fa-stop"></i> STOP & BAYAR
+    </button>
+</form>
                 @else
                     <a href="{{ route('transaksi.print', $transaksi->id_transaksi) }}" target="_blank" class="block w-full py-4 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-center transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-print"></i> Cetak Struk

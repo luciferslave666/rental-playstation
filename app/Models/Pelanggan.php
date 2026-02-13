@@ -13,4 +13,11 @@ class Pelanggan extends Model
         'nama_pelanggan',
         'no_hp'
     ];
+
+    // --- TAMBAHKAN BAGIAN INI AGAR CONTROLLER TIDAK ERROR ---
+    public function transaksi()
+    {
+        // Memberitahu Laravel bahwa Pelanggan ini terhubung ke tabel Transaksi
+        return $this->hasMany(Transaksi::class, 'id_pelanggan');
+    }
 }

@@ -28,4 +28,11 @@ class User extends Authenticatable
     protected $casts = [
         'password' => 'hashed',
     ];
+
+    
+    public function transaksi()
+    {
+        // Satu User (Kasir) bisa menangani BANYAK Transaksi
+        return $this->hasMany(Transaksi::class, 'id_user');
+    }
 }

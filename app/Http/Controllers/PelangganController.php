@@ -55,17 +55,17 @@ class PelangganController extends Controller
     }
 
     // Hapus Data
-    public function destroy($id)
-    {
-        $pelanggan = Pelanggan::findOrFail($id);
-        
-        // Cek dulu apakah pelanggan ini punya riwayat transaksi?
-        // Kalau ada, jangan dihapus sembarangan (bisa error foreign key)
-        if($pelanggan->transaksi()->exists()){
-            return back()->with('error', 'Gagal! Pelanggan ini memiliki riwayat transaksi.');
-        }
+public function destroy($id)
+{
+    $pelanggan = Pelanggan::findOrFail($id);
+    
+    // OPSI 2: HAPUS PAKSA (CASCADE)
+    // Hapus dulu semua transaksi milik orang ini
+    $pelanggan->transaksi()->delete(); 
 
-        $pelanggan->delete();
-        return redirect()->route('pelanggan.index')->with('success', 'Pelanggan dihapus');
-    }
+    // Baru hapus orangnya
+    $pelanggan->delete();
+
+    return redirect()->route('pelanggan.index')->with('success', 'Pelanggan dan semua riwayatnya berhasil dihapus');
+}
 }

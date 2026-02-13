@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+    <script src="https://cdn.tailwindcss.com"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="text-white antialiased selection:bg-ps-blue selection:text-white">
@@ -24,35 +24,43 @@
                 </div>
             </div>
 
-            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">Menu Utama</p>
-                
-                <a href="{{ route('dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all {{ request()->routeIs('dashboard') ? 'bg-ps-blue/20 text-ps-blue border border-ps-blue/30 shadow-[0_0_15px_rgba(0,112,209,0.4)]' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white' }}">
-                    <i class="fa-solid fa-gamepad"></i>
-                    <span class="font-medium">Dashboard</span>
-                </a>
+<nav class="flex-1 px-4 space-y-2 py-6">
+    
+    <a href="{{ route('dashboard') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('dashboard') ? 'bg-slate-700 text-white' : '' }}">
+        <i class="fa-solid fa-chart-pie w-5 text-center"></i>
+        <span>Dashboard</span>
+    </a>
 
-            <a href="{{ route('transaksi.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('transaksi.index') ? 'bg-slate-700 text-white' : '' }}">
-                <i class="fa-solid fa-receipt"></i>
-                <span>Riwayat Transaksi</span>
-            </a>
-            <a href="{{ route('pelanggan.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('pelanggan*') ? 'bg-slate-700 text-white' : '' }}">
-    <i class="fa-solid fa-users"></i>
-    <span>Pelanggan</span>
-</a>
-<a href="{{ route('ruangan.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('ruangan*') ? 'bg-slate-700 text-white' : '' }}">
-    <i class="fa-solid fa-tv"></i>
-    <span>Data Ruangan</span>
-</a>
-<a href="{{ route('user.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('user*') ? 'bg-slate-700 text-white' : '' }}">
-    <i class="fa-solid fa-user-shield"></i>
-    <span>Data Pegawai</span>
-</a>
-<a href="{{ route('paket.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('paket*') ? 'bg-slate-700 text-white' : '' }}">
-    <i class="fa-solid fa-box-archive w-5 text-center"></i>
-    <span>Kelola Paket</span>
-</a>
-            </nav>
+
+    <a href="{{ route('transaksi.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('transaksi.index') ? 'bg-slate-700 text-white' : '' }}">
+        <i class="fa-solid fa-clock-rotate-left w-5 text-center"></i>
+        <span>Riwayat Transaksi</span>
+    </a>
+
+    <a href="{{ route('pelanggan.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('pelanggan*') ? 'bg-slate-700 text-white' : '' }}">
+        <i class="fa-solid fa-users w-5 text-center"></i>
+        <span>Pelanggan</span>
+    </a>
+
+    @if(Auth::user()->role == 'admin')
+
+        <a href="{{ route('ruangan.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('ruangan*') ? 'bg-slate-700 text-white' : '' }}">
+            <i class="fa-solid fa-tv w-5 text-center"></i>
+            <span>Kelola Ruangan</span>
+        </a>
+
+        <a href="{{ route('paket.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('paket*') ? 'bg-slate-700 text-white' : '' }}">
+            <i class="fa-solid fa-box-archive w-5 text-center"></i>
+            <span>Kelola Paket</span>
+        </a>
+
+        <a href="{{ route('user.index') }}" class="nav-item flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all {{ request()->routeIs('user*') ? 'bg-slate-700 text-white' : '' }}">
+            <i class="fa-solid fa-user-gear w-5 text-center"></i>
+            <span>Kelola User</span>
+        </a>
+    @endif
+
+</nav>
 
 <div class="p-4 border-t border-slate-700/50">
     <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-800/50">

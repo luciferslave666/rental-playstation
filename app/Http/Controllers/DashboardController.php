@@ -12,37 +12,46 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // --- EXISTING CODE (Stats Card) ---
-        $pendapatanHariIni = Transaksi::whereDate('created_at', Carbon::today())->sum('total_biaya');
-        $unitTerpakai = Transaksi::whereNull('waktu_selesai')->count();
-        $totalUnit = Ruangan::count();
+        // ==========================================
+        // 1. DATA MONITORING RUANGAN (YANG DIPERBAIKI)
+        // ==========================================
         
-        $ruangans = Ruangan::with('konsol')->get()->map(function ($ruangan) {
-            $transaksiAktif = Transaksi::where('id_ruangan', $ruangan->id_ruangan)
-                ->whereNull('waktu_selesai')
-                ->first();
-            $ruangan->status = $transaksiAktif ? 'Terisi' : 'Kosong';
-            $ruangan->transaksi_aktif = $transaksiAktif; 
-            return $ruangan;
-        });
+        // Kita gunakan "Eager Loading" (with) agar database tidak dipanggil berkali-kali
+        // Kita panggil relasi 'transaksiAktif' yang baru kita buat di Model
+        $ruangans = Ruangan::with(['transaksiAktif.pelanggan', 'transaksiAktif.paket', 'konsol'])
+                    ->orderBy('nomor_ruangan', 'asc')
+                    ->get();
 
-        // 1. Data Pendapatan 7 Hari Terakhir
+        // Hitung statistik ringkas untuk kartu paling atas
+        $totalTransaksiHariIni = Transaksi::whereDate('created_at', Carbon::today())->count();
+        
+        $pendapatanHariIni = Transaksi::whereDate('created_at', Carbon::today())
+                                      ->where('status_pembayaran', 'Lunas')
+                                      ->sum('total_biaya');
+                                      
+        // Hitung berapa ruangan yang sedang merah (ada isinya)
+        $ruanganTerpakai = Ruangan::whereHas('transaksiAktif')->count();
+
+
+        // ==========================================
+        // 2. DATA CHART / GRAFIK (LOGIKA LAMA ANDA)
+        // ==========================================
+        
+        // Data Pendapatan 7 Hari Terakhir
         $incomeLabels = [];
         $incomeData = [];
         
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
-            $incomeLabels[] = $date->format('d M'); // Label tgl
+            $incomeLabels[] = $date->format('d M');
             
-            // Query sum total_biaya per tanggal
             $sum = Transaksi::whereDate('created_at', $date->format('Y-m-d'))
-                    ->where('status_pembayaran', 'Lunas') // Hanya yang sudah bayar
+                    ->where('status_pembayaran', 'Lunas')
                     ->sum('total_biaya');
             $incomeData[] = $sum;
         }
 
-        // 2. Data Popularitas Tipe Ruangan (VIP vs Reguler)
-        // Menghitung berapa kali VIP disewa vs Reguler disewa
+        // Data Popularitas Tipe Ruangan
         $tipeRuanganStats = Transaksi::join('ruangan', 'transaksi.id_ruangan', '=', 'ruangan.id_ruangan')
             ->select('ruangan.tipe_ruangan', DB::raw('count(*) as total'))
             ->groupBy('ruangan.tipe_ruangan')
@@ -51,16 +60,18 @@ class DashboardController extends Controller
         $chartVip = $tipeRuanganStats['VIP'] ?? 0;
         $chartReguler = $tipeRuanganStats['Reguler'] ?? 0;
 
-        return view('dashboard', [
-            'pendapatanHariIni' => $pendapatanHariIni,
-            'unitTerpakai' => $unitTerpakai,
-            'totalUnit' => $totalUnit,
-            'ruangans' => $ruangans,
-            // Kirim data chart ke view
-            'incomeLabels' => $incomeLabels,
-            'incomeData' => $incomeData,
-            'chartVip' => $chartVip,
-            'chartReguler' => $chartReguler
-        ]);
+        // ==========================================
+        // 3. KIRIM SEMUA KE VIEW
+        // ==========================================
+        return view('dashboard', compact(
+            'ruangans', 
+            'totalTransaksiHariIni', 
+            'pendapatanHariIni', 
+            'ruanganTerpakai',
+            'incomeLabels',
+            'incomeData',
+            'chartVip',
+            'chartReguler'
+        ));
     }
 }

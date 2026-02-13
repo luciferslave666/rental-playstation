@@ -5,9 +5,23 @@
 
 @section('content')
 <div class="max-w-5xl mx-auto">
-    <div class="bg-slate-800 rounded-2xl border border-slate-700 p-8 shadow-2xl relative overflow-hidden">
+    <div class="bg-slate-800 rounded-2xl border border-slate-700 p-8 shadow-2xl relative">
         
-        <div class="absolute top-0 right-0 w-32 h-32 bg-ps-blue/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+        @if ($errors->any())
+        <div class="mb-6 bg-red-500/10 border border-red-500/50 rounded-xl p-4 relative z-10">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="fa-solid fa-circle-exclamation text-red-500 text-xl"></i>
+                <h4 class="text-red-500 font-bold">Gagal Menyimpan Transaksi</h4>
+            </div>
+            <ul class="list-disc list-inside text-sm text-red-400">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
+
+        <div class="absolute top-0 right-0 w-32 h-32 bg-ps-blue/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
 
         <form action="{{ route('transaksi.store') }}" method="POST">
             @csrf
@@ -22,7 +36,6 @@
 
                     <div class="mb-8 border-b border-slate-700 pb-8">
                         <label class="block text-slate-400 text-sm font-semibold mb-3">Identitas Pelanggan</label>
-                        
                         <div class="flex bg-slate-900 p-1 rounded-xl mb-4">
                             <label class="flex-1 cursor-pointer">
                                 <input type="radio" name="tipe_pelanggan" value="lama" class="sr-only peer" checked onchange="togglePelanggan(false)">
@@ -37,7 +50,6 @@
                                 </div>
                             </label>
                         </div>
-
                         <div id="input-member-lama">
                             <select name="id_pelanggan" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-ps-blue focus:ring-1 focus:ring-ps-blue transition cursor-pointer">
                                 <option value="" disabled selected>-- Cari Nama Pelanggan --</option>
@@ -46,7 +58,6 @@
                                 @endforeach
                             </select>
                         </div>
-
                         <div id="input-member-baru" class="hidden space-y-3">
                             <input type="text" name="new_nama" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" placeholder="Nama Lengkap">
                             <input type="number" name="new_no_hp" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" placeholder="Nomor HP / WhatsApp">
@@ -60,7 +71,10 @@
                             <label class="cursor-pointer">
                                 <input type="radio" name="id_ruangan" value="{{ $r->id_ruangan }}" 
                                        data-tarif="{{ (int) $r->tarif_per_jam }}" 
-                                       class="peer sr-only" required onchange="hitungTotal()">
+                                       class="peer hidden" 
+                                       required 
+                                       onchange="hitungTotal()"
+                                       {{ request('room_id') == $r->id_ruangan ? 'checked' : '' }}> 
                                 
                                 <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl hover:border-slate-500 peer-checked:border-ps-blue peer-checked:bg-ps-blue/10 peer-checked:shadow-[0_0_15px_rgba(0,112,209,0.3)] transition-all flex items-center justify-between">
                                     <div class="flex items-center gap-3">
@@ -87,7 +101,7 @@
                     </div>
                 </div>
 
-                <div class="bg-slate-900/50 rounded-2xl p-6 border border-slate-700/50 flex flex-col h-full">
+                <div class="bg-slate-900/50 rounded-2xl p-6 border border-slate-700/50 flex flex-col h-full" id="area-kalkulator">
                     <h3 class="text-white font-bold text-lg mb-6 flex items-center gap-2">
                         <i class="fa-solid fa-calculator text-yellow-500"></i> Kalkulator Sewa
                     </h3>
@@ -109,7 +123,7 @@
                                 <input type="radio" name="id_paket" value="{{ $pkt->id_paket }}" 
                                        data-harga="{{ (int) $pkt->harga }}" 
                                        data-durasi="{{ (int) $pkt->durasi_menit }}" 
-                                       class="peer sr-only" onchange="pilihPaket(this)">
+                                       class="peer hidden" onchange="pilihPaket(this)">
                                 <div class="bg-slate-800 border border-slate-700 p-3 rounded-xl hover:border-yellow-500/50 peer-checked:border-yellow-500 peer-checked:bg-yellow-500/10 flex items-center justify-between transition">
                                     <div class="text-sm font-bold text-white">{{ $pkt->nama_paket }}</div>
                                     <div class="text-xs font-bold text-yellow-500">Rp {{ number_format($pkt->harga/1000) }}k</div>
@@ -140,82 +154,81 @@
 </div>
 
 <script>
-    // Variable Global
     let tarifRuangan = 0;
 
-    // Pastikan DOM sudah siap sebelum script jalan
     document.addEventListener("DOMContentLoaded", function() {
-        hitungTotal();
+        // PERBAIKAN: Jika ada request room_id, hitung langsung
+        const adaRuangan = document.querySelector('input[name="id_ruangan"]:checked');
+        if(adaRuangan) {
+            hitungTotal();
+            // Scroll sedikit ke kanan agar user sadar sudah terpilih (opsional untuk mobile)
+        }
     });
 
-    // 1. Fungsi Toggle Pelanggan (Lama vs Baru)
     function togglePelanggan(isBaru) {
         const inputLama = document.getElementById('input-member-lama');
         const inputBaru = document.getElementById('input-member-baru');
         
         if (isBaru) {
-            if(inputLama) inputLama.classList.add('hidden');
-            if(inputBaru) inputBaru.classList.remove('hidden');
-            const selectPelanggan = document.querySelector('select[name="id_pelanggan"]');
-            if(selectPelanggan) selectPelanggan.value = "";
+            inputLama.classList.add('hidden');
+            inputBaru.classList.remove('hidden');
+            document.querySelector('select[name="id_pelanggan"]').value = "";
         } else {
-            if(inputLama) inputLama.classList.remove('hidden');
-            if(inputBaru) inputBaru.classList.add('hidden');
-            const namaBaru = document.querySelector('input[name="new_nama"]');
-            const hpBaru = document.querySelector('input[name="new_no_hp"]');
-            if(namaBaru) namaBaru.value = "";
-            if(hpBaru) hpBaru.value = "";
+            inputLama.classList.remove('hidden');
+            inputBaru.classList.add('hidden');
+            document.querySelector('input[name="new_nama"]').value = "";
+            document.querySelector('input[name="new_no_hp"]').value = "";
         }
     }
 
-    // 2. Logika Hitung Otomatis (Live Calculator)
-    function hitungTotal() {
-        // Cek tarif ruangan yang dipilih
-        const ruanganChecked = document.querySelector('input[name="id_ruangan"]:checked');
+    // Fungsi Pilih Paket (Dengan Jeda agar Radio Tercentang dulu)
+    function pilihPaket(el) {
+        const inputDurasi = document.getElementById('input_durasi');
+        if(inputDurasi) inputDurasi.value = "";
         
+        // Jeda 50ms sangat penting untuk menunggu browser update status checked
+        setTimeout(hitungTotal, 50);
+    }
+
+    function hitungTotal() {
+        // 1. Ambil Tarif Ruangan
+        const ruanganChecked = document.querySelector('input[name="id_ruangan"]:checked');
         if (ruanganChecked) {
-            // Gunakan parseInt dengan fallback 0 agar tidak NaN
             tarifRuangan = parseInt(ruanganChecked.getAttribute('data-tarif')) || 0;
         }
 
-        // Ambil input jam
+        // 2. Ambil Input Manual
         const inputDurasi = document.getElementById('input_durasi');
-        const durasiJam = inputDurasi ? (parseInt(inputDurasi.value) || 0) : 0;
+        let durasiJam = inputDurasi ? (parseInt(inputDurasi.value) || 0) : 0;
 
-        // Ambil data Paket
-        const paketRadios = document.getElementsByName('id_paket');
-        let paketDipilih = false;
+        // 3. Ambil Paket (Pastikan pakai querySelector terbaru)
+        const paketChecked = document.querySelector('input[name="id_paket"]:checked');
         let hargaPaket = 0;
         let durasiPaket = 0;
+        let isPaketActive = false;
 
-        // Cek apakah ada paket yang dicentang
-        for(let r of paketRadios) {
-            if(r.checked) {
-                paketDipilih = true;
-                hargaPaket = parseInt(r.getAttribute('data-harga')) || 0;
-                durasiPaket = parseInt(r.getAttribute('data-durasi')) || 0;
-                break;
-            }
+        if (paketChecked) {
+            hargaPaket = parseInt(paketChecked.getAttribute('data-harga')) || 0;
+            durasiPaket = parseInt(paketChecked.getAttribute('data-durasi')) || 0;
+            isPaketActive = true;
         }
 
-        // --- LOGIKA PENENTUAN TAMPILAN ---
+        // --- LOGIKA TAMPILAN ---
         if (durasiJam > 0) {
-            // KASUS A: User ketik jam manual (Custom)
-            // Matikan pilihan paket jika user mengetik manual
-            for(let r of paketRadios) r.checked = false;
+            // Jika ketik manual, uncheck paket
+            const allPaket = document.getElementsByName('id_paket');
+            for(let r of allPaket) r.checked = false;
             
             const total = durasiJam * tarifRuangan;
             updateDisplay(total, durasiJam + " Jam (Custom)");
-
-        } else if (paketDipilih) {
-            // KASUS B: User pilih paket
-            // Kosongkan input manual
-             if(inputDurasi) inputDurasi.value = "";
-             
+        } 
+        else if (isPaketActive) {
+            // Jika paket aktif
+            if(inputDurasi) inputDurasi.value = "";
             updateDisplay(hargaPaket, (durasiPaket/60) + " Jam (Paket)");
-
-        } else {
-            // KASUS C: Open Billing (Default / Tidak ada input)
+        } 
+        else {
+            // Default: Open Billing
             const elTotal = document.getElementById('display_total');
             const elWaktu = document.getElementById('display_waktu');
             
@@ -224,24 +237,12 @@
         }
     }
 
-    // 3. Helper saat User Klik Paket
-    function pilihPaket(el) {
-        // Kosongkan input jam manual
-        const inputDurasi = document.getElementById('input_durasi');
-        if(inputDurasi) inputDurasi.value = "";
-        hitungTotal();
-    }
-
-    // 4. Helper update text di layar
     function updateDisplay(total, infoWaktu) {
         const elTotal = document.getElementById('display_total');
         const elWaktu = document.getElementById('display_waktu');
-
-        // Format Rupiah yang aman
         const formatted = new Intl.NumberFormat('id-ID').format(total);
 
         if(elTotal) elTotal.innerText = "Rp " + formatted;
-        
         if(elWaktu) {
             elWaktu.innerText = "Waktu Main: " + infoWaktu;
             elWaktu.classList.remove('hidden');
